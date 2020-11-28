@@ -35,8 +35,8 @@ def bbox_np(array_pts_3d):
     # NumPy implementation of bbox
     min_x = np.min( array_pts_3d[:, 0] )
     min_y = np.min( array_pts_3d[:, 1] )
-    max_x = np.min( array_pts_3d[:, 0] )
-    max_y = np.min( array_pts_3d[:, 1] )
+    max_x = np.max( array_pts_3d[:, 0] )
+    max_y = np.max( array_pts_3d[:, 1] )
 
     bbox = min_x, min_y, max_x, max_y
     return bbox
@@ -149,6 +149,8 @@ def idw_interpolation(list_pts_3d, j_idw):
     # Retrieve bounding box for this dataset
     min_x, min_y, max_x, max_y = bbox( arr_pts_3d )
 
+    # Retrieve raster center points
+    list_raster = raster(  )
 
     x_pts = pts_arr[:, 0]
     y_pts = pts_arr[:, 0]
