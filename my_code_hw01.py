@@ -2,16 +2,20 @@
 #-- hw01 GEO1015.2020
 #-- DANIEL DOBSON
 #-- 5152739
-#-- [YOUR NAME]
-#-- [YOUR STUDENT NUMBER] 
+#-- DMITRI VISSER
+#-- 4279913
 
 
 #-- import outside the standard Python library are not allowed, just those:
 import math
-import numpy
+import numpy as np
 import scipy.spatial
 import startin 
 #-----
+
+#-- tmp import by us, will be removed before handing in the assignment
+import time
+
 
 def bbox(list_pts_3d):
     '''
@@ -24,6 +28,16 @@ def bbox(list_pts_3d):
     y_pts = [i[1] for i in list_pts_3d]
         
     min_x, min_y, max_x, max_y = min(x_pts), min(y_pts), max(x_pts), max(y_pts)
+    bbox = min_x, min_y, max_x, max_y
+    return bbox
+
+def bbox_np(array_pts_3d):
+    # NumPy implementation of bbox
+    min_x = np.min( array_pts_3d[:, 0] )
+    min_y = np.min( array_pts_3d[:, 1] )
+    max_x = np.min( array_pts_3d[:, 0] )
+    max_y = np.min( array_pts_3d[:, 1] )
+
     bbox = min_x, min_y, max_x, max_y
     return bbox
 
@@ -117,6 +131,7 @@ def nn_interpolation(list_pts_3d, j_nn):
 def idw_interpolation(list_pts_3d, j_idw):
     """
     !!! TO BE COMPLETED !!!
+    !!! DO NOT CHANGE INPUT ARGUMENTS !!!
      
     Function that writes the output raster with IDW
      
@@ -127,6 +142,20 @@ def idw_interpolation(list_pts_3d, j_idw):
         returns the value of the area
  
     """  
+
+    # Convert to NumPy array
+    arr_pts_3d = np.array(list_pts_3d)
+
+    # Retrieve bounding box for this dataset
+    min_x, min_y, max_x, max_y = bbox( arr_pts_3d )
+
+
+    x_pts = pts_arr[:, 0]
+    y_pts = pts_arr[:, 0]
+    z_pts = pts_arr[:, 0]
+    x_pts = np.sort( x_pts )
+    y_pts = np.sort( y_pts )
+
     # print("cellsize:", j_idw['cellsize'])
     # print("radius:", j_idw['radius'])
 
