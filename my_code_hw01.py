@@ -48,10 +48,13 @@ def raster(list_pts_3d, jparams):
     Output: [[x1,y1], [x2,y2], ...., [xn, yn]]
     '''
     #Prepare points for raster
+    print('items in list_pts_3d', len(list_pts_3d))
     x_pts = [i[0] for i in list_pts_3d]
+    print('items in x_pts', len(x_pts))
     y_pts = [i[1] for i in list_pts_3d]
     z_pts = [i[2] for i in list_pts_3d]
     x_pts.sort()
+    print('items in x_pts', len(x_pts))
     y_pts.sort()
     #Bbox for raster input, extracting max_x, max_y
     bbox_raster = bbox(list_pts_3d)
@@ -59,14 +62,12 @@ def raster(list_pts_3d, jparams):
     ###Make raster
     #Making x, y *center* cells for raster.
     xcells = [(i+jparams["cellsize"]/2) for i in x_pts]
+    print('items in xcells', len(xcells))
     xcells = [cell for cell in xcells if cell < max_x]
     ycells = [(i+jparams["cellsize"]/2) for i in y_pts]
     ycells = [cell for cell in ycells if cell < max_y]
     #Putting x,y cells together to form raster
-    raster = []
-    for i in xcells:
-        for j in ycells:
-            raster.append([i,j])
+    raster = list(zip(xcells,ycells))
     return raster 
 
 def nn_interpolation(list_pts_3d, j_nn):
