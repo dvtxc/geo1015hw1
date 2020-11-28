@@ -66,8 +66,10 @@ def raster(list_pts_3d, jparams):
     xcells = [cell for cell in xcells if cell < max_x]
     ycells = [(i+jparams["cellsize"]/2) for i in y_pts]
     ycells = [cell for cell in ycells if cell < max_y]
-    #Putting x,y cells together to form raster
+    #Putting x,y cells together to form raster as tuples
     raster = list(zip(xcells,ycells))
+    #Putting x,y cells together to form raster as nested list
+    #raster = [list(cell) for cell in zip(xcells,ycells)
     return raster 
 
 def nn_interpolation(list_pts_3d, j_nn):
