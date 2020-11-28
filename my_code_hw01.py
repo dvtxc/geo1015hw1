@@ -143,6 +143,10 @@ def idw_interpolation(list_pts_3d, j_idw):
  
     """  
 
+    nodata_value = -9999
+    idw_power = -int(j_idw["power"])
+    radius = j_idw["radius"]
+
     # Convert to NumPy array
     arr_pts_3d = np.array(list_pts_3d)
 
@@ -150,13 +154,51 @@ def idw_interpolation(list_pts_3d, j_idw):
     min_x, min_y, max_x, max_y = bbox( arr_pts_3d )
 
     # Retrieve raster center points
-    list_raster = raster(  )
+    # TO-DO, use np-array
+    list_raster = raster( list_pts_3d, j_idw )
+    arr_raster = np.array( list_raster )
 
-    x_pts = pts_arr[:, 0]
-    y_pts = pts_arr[:, 0]
-    z_pts = pts_arr[:, 0]
-    x_pts = np.sort( x_pts )
-    y_pts = np.sort( y_pts )
+    # Subtract the coordinates between the points of arr_pts_3d and arr_raster.
+    # Since we want to calculate the distance of all points, perform an np.outer()
+    # operation, i.e. between all points of arrays of different sizes.
+    dx = np.subtract.outer(arr_raster[:,0], arr_pts_3d[:,0])
+    dy = np.subtract.outer(arr_raster[:,1], arr_pts_3d[:,1])
+
+    # Calculate the euclidian distance between all points as 
+    # arr_dist = [[dist_rp1_sp1, dist_rp1_sp2, dist_rp1_sp3, ...],
+    #             [dist_rp2_sp1, dist_rp2_sp2, dist_rp2_sp3, ...],
+    #             ...]
+    arr_dist = np.hypot(dx, dy)
+
+    #  Start with IDW interpolation and store output in zi
+    num_rp, num_sp = arr_dist.shape
+    zi = np.empty(num_rp)
+    
+    for i in range(num_rp):
+        # For every raster point:
+
+        # Calculate distance from this raster point to sample points
+        distances = arr_dist[i, :]
+
+        # What sample points are within the circle
+        sp_in_circle = np.where(distances < radius)[0]
+        #print(arr_raster[i,:])
+        #print(sp_in_circle)
+        
+        if sp_in_circle.size != 0:
+            # Get values from sample points within circle
+            values = arr_pts_3d[sp_in_circle, 2]
+            #print(values)
+
+            weights = distances[sp_in_circle] ** idw_power
+            weights /= weights.sum(axis=0)
+            
+            zi[i] = np.dot(values.T, weights)
+            print(zi[i])
+            #print('\n')
+        else:
+            zi[i] = nodata_value
+
 
     # print("cellsize:", j_idw['cellsize'])
     # print("radius:", j_idw['radius'])
