@@ -75,7 +75,7 @@ def write_asc(list_pts_3d,int_pts,jparams):
     for i in int_pts:
         fh.write(' '.join(map(repr,i)) + '\n')
     fh.close()
-    print("File written to", jparams["filename"])
+    print("File written to", jparams["output-file"])
 
 
 def distance_matrix(arr_raster, arr_pts_3d):
