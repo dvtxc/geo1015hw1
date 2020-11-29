@@ -68,7 +68,7 @@ def raster(list_pts_3d, jparams):
     return raster_xy, rows, cols, xll, yll
 
 def write_asc(list_pts_3d,int_pts,jparams):
-    _,rows,cols,xll,yll = raster(list_pts_3d)
+    _,rows,cols,xll,yll = raster(list_pts_3d,jparams)
     cellsize = jparams["cellsize"]
     fh = open(jparams['output-file'], "w")
     fh.write(f"NCOLS {cols}\nNROWS {rows}\nXLLCORNER {xll}\nYLLCORNER {yll}\nCELLSIZE {cellsize}\nNODATA_VALUE {-9999}\n") 
