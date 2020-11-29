@@ -60,11 +60,9 @@ def raster(list_pts_3d, jparams):
     ###Make raster
     xi = np.arange(cll_x,cur_x,jparams["cellsize"])
     yi = np.arange(cll_y,cur_y,jparams["cellsize"])
-    print(xi)
     
     #Making x, y *center* cells for raster.
     raster_xy = np.array([[i,j] for i in xi for j in yi])
-    print(raster_xy)
     return raster_xy, rows, cols, xll, yll
 
 def write_asc(list_pts_3d,int_pts,jparams):
