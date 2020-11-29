@@ -48,26 +48,34 @@ def raster(list_pts_3d, jparams):
     Output: [(x1,y1), (x2,y2), ...., (xn, yn)] or
             [[x1,y1], [x2,y2], ...., [xn, yn]]
     '''
-    #Prepare points for raster
-    x_pts = [i[0] for i in list_pts_3d]
-    y_pts = [i[1] for i in list_pts_3d]
-    z_pts = [i[2] for i in list_pts_3d]
-    x_pts.sort()
-    y_pts.sort()
     #Bbox for raster input, extracting max_x, max_y
     bbox_raster = bbox(list_pts_3d)
-    max_x, max_y = bbox_raster[2], bbox_raster[3]
+    min_x, min_y, max_x, max_y = bbox_raster
+    #Lower left corner, and center llc
+    xll, yll = min_x, min_y
+    rows, cols = math.ceil((max_x-min_x)/jparams["cellsize"]),math.ceil((max_y-min_y)//jparams["cellsize"])
+    cll_x, cll_y  = (xll + jparams["cellsize"]/2, yll + jparams["cellsize"]/2)
+    cur_x, cur_y = (max_x + jparams["cellsize"]/2, max_y + jparams["cellsize"]/2)
+
     ###Make raster
+    xi = np.arange(cll_x,cur_x,jparams["cellsize"])
+    yi = np.arange(cll_y,cur_y,jparams["cellsize"])
+    print(xi)
+    
     #Making x, y *center* cells for raster.
-    xcells = [(i+jparams["cellsize"]/2) for i in x_pts]
-    xcells = [cell for cell in xcells if cell < max_x]
-    ycells = [(i+jparams["cellsize"]/2) for i in y_pts]
-    ycells = [cell for cell in ycells if cell < max_y]
-    #Putting x,y cells together to form raster
-    #raster = list(zip(xcells,ycells))
-    #Putting x,y cells together to form raster as nested list
-    raster = [list(cell) for cell in zip(xcells,ycells)]
-    return raster 
+    raster_xy = np.array([[i,j] for i in xi for j in yi])
+    print(raster_xy)
+    return raster_xy, rows, cols, xll, yll
+
+def write_asc(list_pts_3d,int_pts,jparams):
+    _,rows,cols,xll,yll = raster(list_pts_3d)
+    cellsize = jparams["cellsize"]
+    fh = open(jparams['output-file'], "w")
+    fh.write(f"NCOLS {cols}\nNROWS {rows}\nXLLCORNER {xll}\nYLLCORNER {yll}\nCELLSIZE {cellsize}\nNODATA_VALUE {-9999}\n") 
+    for i in int_pts:
+        fh.write(' '.join(map(repr,i)) + '\n')
+    fh.close()
+    print("File written to", jparams["filename"])
 
 
 def distance_matrix(arr_raster, arr_pts_3d):
@@ -112,21 +120,25 @@ def nn_interpolation(list_pts_3d, j_nn):
     x_pts = [i[0] for i in list_pts_3d]
     y_pts = [i[1] for i in list_pts_3d]
     z_pts = [i[2] for i in list_pts_3d]
+    x_pts = np.array(x_pts)
+    y_pts = np.array(y_pts)
     z_pts = np.array(z_pts)
+    
         
     #bbox
     min_x, min_y, max_x, max_y = bbox(list_pts_3d)
-    print(min_x, min_y, max_x, max_y)
     #rows and columns
     rows, cols = math.ceil((max_x-min_x)/j_nn["cellsize"]),math.ceil((max_y-min_y)//j_nn["cellsize"]) 
     print(type(rows))
-
     #Lower left corner
     xll, yll = min_x, min_y
     ll = xll, yll
     cellsize = j_nn["cellsize"]
+    #Center lower left corner, center upper right corner
+    cxll, cyll  = (xll + j_nn["cellsize"]/2, yll + j_nn["cellsize"]/2)
 
-    raster_nn = raster(list_pts_3d, j_nn)
+    raster_nn = np.flip(np.array(raster(list_pts_3d, j_nn)),0)
+    print(raster_nn)
     list_pts_3d_arr = np.array(list_pts_3d)
     xy_list_arr = list_pts_3d_arr[:,[0,1]]
     #print(xy_list_arr)  
@@ -136,16 +148,53 @@ def nn_interpolation(list_pts_3d, j_nn):
 
     for xy in raster_nn:
         _, i = kd.query(xy, k=1)
-        z_nn_values.append(z_pts[i])
+        z_nn_values.append([z_pts[i]])
 
-    #print(z_nn_values)
+    #print(_)
+    
+    
     #to put in the interpolation for z values
-    #z_nn_values=np.array(z_nn_values)
-    #z_nn_values = z_nn_values.reshape(int(rows), int(cols))
-
+    z_nn_values=np.array(z_nn_values)
+    #print(z_nn_values)
+    
     #convex hull set anything outside it as     
     #create convex hull
     convex_hull = scipy.spatial.ConvexHull(xy_list_arr)
+
+    fh = open(j_nn['output-file'], "w")
+    fh.write(f"NCOLS {cols}\nNROWS {rows}\nXLLCORNER {xll}\nYLLCORNER {yll}\nCELLSIZE {cellsize}\nNODATA_VALUE {-9999}\n") 
+    for i in z_nn_values:
+        fh.write(' '.join(map(str,i)) + '\n')
+    fh.close()
+    '''
+    xyz = np.hstack((raster_nn,z_nn_values))
+    #print(xyz[0])
+    
+    print(' '.join(map(str,xyz[0])))
+
+    
+    fh = open(j_nn['output-file'], "w")
+    fh.write(f"NCOLS {cols}\nNROWS {rows}\nXLLCORNER {cxll}\nYLLCORNER {cyll}\nCELLSIZE {cellsize}\nNODATA_VALUE {-9999}\n") 
+    for i in xyz:
+        fh.write(' '.join(map(repr,i)) + '\n')
+    fh.close()
+
+    
+    with open('list.txt','a') as f:
+    for l,el in enumerate(stats):
+        string = ', '.join(map(str,el))
+        for item in string:
+            f.write(item)
+    f.write('\n')
+    
+    print(type(raster_nn[0][0]))
+    print(type(z_nn_values[0]))
+    for i in raster_nn:
+        print(i)
+
+    for i in z_nn_values:
+        print(i)
+
 
     
     ##writing asc file
@@ -154,8 +203,7 @@ def nn_interpolation(list_pts_3d, j_nn):
     for i in z_nn_values:
         fh.write(" ".join([str(_) for _ in i]) + '\n')
     fh.close()
-    print("File written to", j_nn['output-file'])
-    '''
+    
     with open(j_nn['output-file'], "a") as fh:
         fh.write(f"NCOLS {cols}\nNROWS {rows}\nXLLCORNER {xll}\nYLLCORNER {yll}\nCELLSIZE {cellsize}\nNODATA_VALUE{-9999}\n")
         for i in z_nn_values:
@@ -195,6 +243,7 @@ def nn_interpolation(list_pts_3d, j_nn):
     '''
     
     print("File written to", j_nn['output-file'])
+
 
 
 def idw_interpolation(list_pts_3d, j_idw):
