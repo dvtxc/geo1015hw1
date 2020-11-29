@@ -1,5 +1,6 @@
 # Ignore everything
 *
+*/
 
 # But not these files...
 !.gitignore
@@ -7,6 +8,11 @@
 !**.md
 !**.asc
 # etc...
+
+**.pyc
+__pycache__/
+.geov/
+.geo-venv/
 
 # ...even if they are in subdirectories
 # !*/
