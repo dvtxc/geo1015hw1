@@ -67,6 +67,16 @@ def raster(list_pts_3d, jparams):
     print(raster_xy)
     return raster_xy, rows, cols, xll, yll
 
+def write_asc(list_pts_3d,int_pts,jparams):
+    _,rows,cols,xll,yll = raster(list_pts_3d)
+    cellsize = jparams["cellsize"]
+    fh = open(jparams['output-file'], "w")
+    fh.write(f"NCOLS {cols}\nNROWS {rows}\nXLLCORNER {xll}\nYLLCORNER {yll}\nCELLSIZE {cellsize}\nNODATA_VALUE {-9999}\n") 
+    for i in int_pts:
+        fh.write(' '.join(map(repr,i)) + '\n')
+    fh.close()
+    print("File written to", jparams["filename"])
+
 def nn_interpolation(list_pts_3d, j_nn):
     """
     !!! TO BE COMPLETED !!!
