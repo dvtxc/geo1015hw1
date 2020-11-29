@@ -117,131 +117,24 @@ def nn_interpolation(list_pts_3d, j_nn):
         returns the value of the area
  
     """  
-    x_pts = [i[0] for i in list_pts_3d]
-    y_pts = [i[1] for i in list_pts_3d]
     z_pts = [i[2] for i in list_pts_3d]
-    x_pts = np.array(x_pts)
-    y_pts = np.array(y_pts)
     z_pts = np.array(z_pts)
-    
-        
-    #bbox
-    min_x, min_y, max_x, max_y = bbox(list_pts_3d)
-    #rows and columns
-    rows, cols = math.ceil((max_x-min_x)/j_nn["cellsize"]),math.ceil((max_y-min_y)//j_nn["cellsize"]) 
-    print(type(rows))
-    #Lower left corner
-    xll, yll = min_x, min_y
-    ll = xll, yll
     cellsize = j_nn["cellsize"]
-    #Center lower left corner, center upper right corner
-    cxll, cyll  = (xll + j_nn["cellsize"]/2, yll + j_nn["cellsize"]/2)
-
-    raster_nn = np.flip(np.array(raster(list_pts_3d, j_nn)),0)
-    print(raster_nn)
+        
+    raster_nn, rows, cols, xll, yll = raster(list_pts_3d, j_nn)
     list_pts_3d_arr = np.array(list_pts_3d)
-    xy_list_arr = list_pts_3d_arr[:,[0,1]]
-    #print(xy_list_arr)  
+    xy_list_arr = list_pts_3d_arr[:,[0,1]] 
     kd = scipy.spatial.KDTree(xy_list_arr)
 
-    z_nn_values = []
-
+    nn_pts = []
     for xy in raster_nn:
         _, i = kd.query(xy, k=1)
-        z_nn_values.append([z_pts[i]])
+        nn_pts.append(z_pts[i])
 
-    #print(_)
-    
-    
-    #to put in the interpolation for z values
-    z_nn_values=np.array(z_nn_values)
-    #print(z_nn_values)
-    
-    #convex hull set anything outside it as     
-    #create convex hull
-    convex_hull = scipy.spatial.ConvexHull(xy_list_arr)
+    nn_pts=np.array(nn_pts)
+    nn_pts=nn_pts.reshape(int(rows), int(cols))
 
-    fh = open(j_nn['output-file'], "w")
-    fh.write(f"NCOLS {cols}\nNROWS {rows}\nXLLCORNER {xll}\nYLLCORNER {yll}\nCELLSIZE {cellsize}\nNODATA_VALUE {-9999}\n") 
-    for i in z_nn_values:
-        fh.write(' '.join(map(str,i)) + '\n')
-    fh.close()
-    '''
-    xyz = np.hstack((raster_nn,z_nn_values))
-    #print(xyz[0])
-    
-    print(' '.join(map(str,xyz[0])))
-
-    
-    fh = open(j_nn['output-file'], "w")
-    fh.write(f"NCOLS {cols}\nNROWS {rows}\nXLLCORNER {cxll}\nYLLCORNER {cyll}\nCELLSIZE {cellsize}\nNODATA_VALUE {-9999}\n") 
-    for i in xyz:
-        fh.write(' '.join(map(repr,i)) + '\n')
-    fh.close()
-
-    
-    with open('list.txt','a') as f:
-    for l,el in enumerate(stats):
-        string = ', '.join(map(str,el))
-        for item in string:
-            f.write(item)
-    f.write('\n')
-    
-    print(type(raster_nn[0][0]))
-    print(type(z_nn_values[0]))
-    for i in raster_nn:
-        print(i)
-
-    for i in z_nn_values:
-        print(i)
-
-
-    
-    ##writing asc file
-    fh = open(j_nn['output-file'], "w")
-    fh.write(f"NCOLS {cols}\nNROWS {rows}\nXLLCORNER {xll}\nYLLCORNER {yll}\nCELLSIZE {cellsize}\nNODATA_VALUE{-9999}\n") 
-    for i in z_nn_values:
-        fh.write(" ".join([str(_) for _ in i]) + '\n')
-    fh.close()
-    
-    with open(j_nn['output-file'], "a") as fh:
-        fh.write(f"NCOLS {cols}\nNROWS {rows}\nXLLCORNER {xll}\nYLLCORNER {yll}\nCELLSIZE {cellsize}\nNODATA_VALUE{-9999}\n")
-        for i in z_nn_values:
-            fh.write(" ".join([str(_) for _ in i]) + '\n')
-
-    
-    kd = scipy.spatial.KDTree(list_pts)
-    d, i = kd.query(kd, k=1)
-    print(d, i)
-    '''
-    #-- to speed up the nearest neighbour us a kd-tree
-    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.KDTree.html#scipy.spatial.KDTree
-    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.KDTree.query.html#scipy.spatial.KDTree.query
-    #kd = scipy.spatial.KDTree(list_pts)
-    #print(kd)
-    #d, i = kd.query(kd, k=1)
-    #print(d, i)
-
-    '''
-     
-
-    
-    ### Convert list of points to array for preprocessing the input data
-    #list_pts = numpy.array(list_pts_3d)
-    
-    #Lower left corner
-    xll, yll = min_x, min_y
-    ll = xll, yll
-    print('LOWERLEFTCORNER: {}'.format(ll))
-
-    #Center lower left corner, center upper right corner
-    cll_x, cll_y  = (xll + j_nn["cellsize"]/2, yll + j_nn["cellsize"]/2)
-    cur_x, cur_y = (max_x - j_nn["cellsize"]/2, max_y - j_nn["cellsize"]/2)
-    print('cll_x', cll_x, 'cll_y', cll_y)
-    print('cur_x', cur_x, 'cur_y', cur_y)
-    
-    '''
-    
+    write_asc(list_pts_3d, nn_pts,j_nn)
     print("File written to", j_nn['output-file'])
 
 
