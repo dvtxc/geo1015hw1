@@ -272,7 +272,7 @@ def idw_interpolation(list_pts_3d, j_idw):
 
     # Retrieve raster center points
     # TO-DO, use np-array
-    list_raster = raster( list_pts_3d, j_idw )
+    list_raster, rows, colls, xll, yll = raster( list_pts_3d, j_idw )
     arr_raster = np.array( list_raster )
 
     # Calculate the euclidian distance between all combinations of sample points and raster centres
@@ -382,7 +382,7 @@ def kriging_interpolation(list_pts_3d, j_kriging):
 
     # Retrieve raster center points
     # TO-DO, use np-array
-    list_raster = raster( list_pts_3d, j_kriging )
+    list_raster, rows, colls, xll, yll = raster( list_pts_3d, j_kriging )
     arr_raster = np.array( list_raster )
 
     # Calculate the euclidian distance for all combinations of sample points and raster cell centres.
