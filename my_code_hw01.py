@@ -92,13 +92,12 @@ def nn_interpolation(list_pts_3d, j_nn):
     print(min_x, min_y, max_x, max_y)
     #rows and columns
     rows, cols = math.ceil((max_x-min_x)/j_nn["cellsize"]),math.ceil((max_y-min_y)//j_nn["cellsize"]) 
-    print(type(rows))
 
     #Lower left corner
     xll, yll = min_x, min_y
-    ll = xll, yll
     cellsize = j_nn["cellsize"]
 
+    #fetching raster
     raster_nn = raster(list_pts_3d, j_nn)
     list_pts_3d_arr = np.array(list_pts_3d)
     xy_list_arr = list_pts_3d_arr[:,[0,1]]
@@ -111,6 +110,8 @@ def nn_interpolation(list_pts_3d, j_nn):
         _, i = kd.query(xy, k=1)
         z_nn_values.append(z_pts[i])
 
+    print(raster_nn.shape)
+    print(z_nn_values.shape)
     #print(z_nn_values)
     #to put in the interpolation for z values
     #z_nn_values=np.array(z_nn_values)
@@ -120,7 +121,7 @@ def nn_interpolation(list_pts_3d, j_nn):
     #create convex hull
     convex_hull = scipy.spatial.ConvexHull(xy_list_arr)
 
-    
+    '''
     ##writing asc file
     fh = open(j_nn['output-file'], "w")
     fh.write(f"NCOLS {cols}\nNROWS {rows}\nXLLCORNER {xll}\nYLLCORNER {yll}\nCELLSIZE {cellsize}\nNODATA_VALUE{-9999}\n") 
@@ -128,7 +129,7 @@ def nn_interpolation(list_pts_3d, j_nn):
         fh.write(" ".join([str(_) for _ in i]) + '\n')
     fh.close()
     print("File written to", j_nn['output-file'])
-    '''
+    
     with open(j_nn['output-file'], "a") as fh:
         fh.write(f"NCOLS {cols}\nNROWS {rows}\nXLLCORNER {xll}\nYLLCORNER {yll}\nCELLSIZE {cellsize}\nNODATA_VALUE{-9999}\n")
         for i in z_nn_values:
