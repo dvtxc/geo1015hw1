@@ -274,7 +274,7 @@ def kriging_interpolation(list_pts_3d, j_kriging):
 
     # Retrieve raster center points
     # TO-DO, use np-array
-    list_raster, rows, colls, xll, yll = raster( list_pts_3d, j_kriging )
+    list_raster, rows, cols, xll, yll = raster( list_pts_3d, j_kriging )
     arr_raster = np.array( list_raster )
 
     # Calculate the euclidian distance for all combinations of sample points and raster cell centres.
@@ -335,7 +335,9 @@ def kriging_interpolation(list_pts_3d, j_kriging):
 
         print('Performing Kriging: {0:6.2f}%'.format(rp/num_rp*100), end='\r')
 
+    zi = zi.reshape(int(rows), int(cols))
 
+    write_asc(list_pts_3d, zi, j_kriging)
 
     
     print("File written to", j_kriging['output-file'])
