@@ -196,21 +196,18 @@ def idw_interpolation(list_pts_3d, j_idw):
             weights /= weights.sum(axis=0)
             
             zi[i] = np.dot(values.T, weights)
-            print(zi[i])
-            #print('\n')
+
         else:
             # The current raster point does not have any sample points in sight
             zi[i] = nodata_value
+
+        print('Performing IDW: {0:6.2f}%'.format(i/num_rp*100), end='\r')
 
 
     # print("cellsize:", j_idw['cellsize'])
     # print("radius:", j_idw['radius'])
 
-    #-- to speed up the nearest neighbour us a kd-tree
-    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.KDTree.html#scipy.spatial.KDTree
-    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.KDTree.query.html#scipy.spatial.KDTree.query
-    # kd = scipy.spatial.KDTree(list_pts)
-    # i = kd.query_ball_point(p, radius)
+    write_asc(list_pts_3d, zi.tolist(), j_idw)
     
     print("File written to", j_idw['output-file'])
 
@@ -285,6 +282,8 @@ def kriging_interpolation(list_pts_3d, j_kriging):
     num_rp, num_sp = arr_dist.shape
     zi = np.empty(num_rp)
 
+    print('Starting Kriging')
+
     ## START OF INTERPOLATION ##
     for rp in range(num_rp):
         # For every raster point:
@@ -325,11 +324,12 @@ def kriging_interpolation(list_pts_3d, j_kriging):
                 weights = np.linalg.solve(A,d)
                 
                 zi[rp] = np.dot(values.T, weights[0:-1])
-            print(zi[rp])
-            #print('\n')
+
         else:
             # The current raster point does not have any sample points in sight
             zi[rp] = nodata_value
+
+        print('Performing Kriging: {0:6.2f}%'.format(rp/num_rp*100), end='\r')
 
 
 

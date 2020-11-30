@@ -35,7 +35,7 @@ def main():
             assert(len(p) == 3)
             list_pts_3d.append(p)
     #-- interpolations if in the params
-    if 'nn' not in jparams:
+    if 'nn' in jparams:
         start_time = time.time()
         print("=== Nearest neighbour interpolation ===")
         my_code_hw01.nn_interpolation(list_pts_3d, jparams['nn'])
