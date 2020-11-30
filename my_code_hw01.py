@@ -165,7 +165,7 @@ def idw_interpolation(list_pts_3d, j_idw):
 
     # Retrieve raster center points
     # TO-DO, use np-array
-    list_raster, rows, colls, xll, yll = raster( list_pts_3d, j_idw )
+    list_raster, rows, cols, xll, yll = raster( list_pts_3d, j_idw )
     arr_raster = np.array( list_raster )
 
     # Calculate the euclidian distance between all combinations of sample points and raster centres
@@ -207,7 +207,9 @@ def idw_interpolation(list_pts_3d, j_idw):
     # print("cellsize:", j_idw['cellsize'])
     # print("radius:", j_idw['radius'])
 
-    write_asc(list_pts_3d, zi.tolist(), j_idw)
+    zi = zi.reshape(int(rows), int(cols))
+
+    write_asc(list_pts_3d, zi, j_idw)
     
     print("File written to", j_idw['output-file'])
 
@@ -304,11 +306,13 @@ def kriging_interpolation(list_pts_3d, j_kriging):
             #print(values)
 
             # Calculate Lagrange multiplier matrix
+            habs2 = distance_matrix(arr_pts_3d[sp_in_circle,:], arr_pts_3d[sp_in_circle,:])
             A = np.ones((num_in_circle + 1, num_in_circle + 1))
             A[-1,-1] = 0
             for i in range(num_in_circle):
                 for j in range(num_in_circle):
-                    habs = math.sqrt( (arr_pts_3d[i,0] - arr_pts_3d[j,0])**2 + (arr_pts_3d[i,1] - arr_pts_3d[j,1])**2 )
+                    #habs = math.sqrt( (arr_pts_3d[i,0] - arr_pts_3d[j,0])**2 + (arr_pts_3d[i,1] - arr_pts_3d[j,1])**2 )
+                    habs = habs2[i,j]
                     A[i,j] = vsill * (1 - np.exp( - (3 * habs)**2 / vrange**2 )) + 0
                     #A[i,j] = 1/2 * ( values[i] - values[j] )**2
 
