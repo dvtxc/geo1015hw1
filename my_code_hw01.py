@@ -59,7 +59,7 @@ def raster(list_pts_3d, jparams):
 
     ###Make raster
     xi = np.arange(cll_x,cur_x,jparams["cellsize"])
-    yi = np.arange(cll_y,cur_y,jparams["cellsize"])
+    yi = np.flip(np.arange(cll_y,cur_y,jparams["cellsize"]))
     
     #Making x, y *center* cells for raster.
     raster_xy = np.array([[i,j] for i in xi for j in yi])
@@ -131,6 +131,7 @@ def nn_interpolation(list_pts_3d, j_nn):
 
     nn_pts=np.array(nn_pts)
     nn_pts=nn_pts.reshape(int(rows), int(cols))
+    nn_pts = np.transpose(nn_pts)
 
     write_asc(list_pts_3d, nn_pts,j_nn)
     print("File written to", j_nn['output-file'])
