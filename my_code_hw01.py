@@ -241,50 +241,74 @@ def tin_interpolation(list_pts_3d, j_tin):
         j_tin:       the parameters of the input for "tin"
     Output:
         returns the value of the area
- 
-    """ 
+    """
+     
+    ## PREPARATION ##
+    # Extract z sample points from input
+    z_pts = [i[2] for i in list_pts_3d]
+    z_pts = np.array(z_pts)
     # Transform input list_pts_3d into numpy array
     list_pts_3d_arr = np.array(list_pts_3d)
     # x, y extraction
     xy_list_arr = list_pts_3d_arr[:,[0,1]] 
     # Raster
     raster_tin, rows, cols, xll, yll = raster(list_pts_3d, j_tin)
+    raster_tin_arr = np.array(raster_tin)
     #print(raster_tin)
     # No data
     no_data = -9999
+
+    arr_dist = distance_matrix(raster_tin_arr, list_pts_3d_arr)
     
-    
+    # Construct DT
     dt = scipy.spatial.Delaunay(xy_list_arr)
     #print(dt.simplices)
     #print(dt.vertices)
     tin_pts= []
     vertices = []
+    # For each coordinate, extract simplex (triangle)
     for xy in raster_tin:
+        #distances = arr_dist[xy, :]
         sim = dt.find_simplex(xy)
-        if xy is not sim:
+        # find_simplex returns -1 when points are outside of the triangulation
+        if sim == -1:
             tin_pts.append(no_data)
-        elif sim == -1:
+        elif (not sim):
             tin_pts.append(no_data)
-        verts = list_pts_3d_arr[dt.simplices[sim]]
-        vertices.append(verts)
-    print(vertices[0])
-    print(vertices[0][0])
-    print(vertices[0][0][2])
+        else:
+            # Three points that define the triangle, given by their simplices
+            simplices = dt.simplices[sim]
+            A, B, C = list_pts_3d_arr[simplices[0]], list_pts_3d_arr[simplices[1]], list_pts_3d_arr[simplices[2]]
+        
+            # Determine coefficients of barycentric coordinates
+
+            w0 = ((B[0] - C[1]) * (xy[0] - C[0]) + (C[0] -B[0]) * (xy[1] - C[1])) / ((B[1] - C[1]) * (A[0] - C[0]) + (C[0] - B[0]) * (A[1] - C[1]))
+            w1 = ((C[0] - A[1]) * (xy[0] - C[0]) + (A[0] -C[0]) * (xy[1] - C[1])) / ((B[1] - C[1]) * (A[0] - C[0]) + (C[0] - B[0]) * (A[1] - C[1]))
+            w2 = 1 - w0 - w1
+
+            if w0 == 0 and w1 == 0:
+                z_pt = A[2]
+            elif w0 == 1:
+                z_pt = B[2]
+            elif w1 == 1:
+                z_pt = C[2]
+            #elif w0 < 0 or w1 < 0:
+                #tin_pts.append(no_data)
+            else:
+                # Compute the height value of point coordinate
+                z_pt = (w0 * A[2] + w1 * B[2] + w2 * C[2]) / (w0 + w1 + w2)
+            tin_pts.append(z_pt)
+            #print(A[2])
+    print(len(tin_pts))
+    #print(vertices[:10])
+    tin_pts = np.array(tin_pts).reshape(rows,cols)
+    write_asc(list_pts_3d,tin_pts,j_tin)
+    
 
     
     
-    '''
-    vertices = []
-    for xy in raster_tin:
-        if dt.find_simplex(xy) == -1:
-            tin_pts.append(no_data)
-        elif not dt.find_simplex:
-            continue
-        verts = list_pts_3d_arr[dt.simplices[dt.find_simplex(xy)]]
-        vertices.append(verts) 
-    print('tin_pts', len(tin_pts))
-    print('vertices', len(vertices))
-    '''    
+
+     
 
     #-- example to construct the DT with scipy
     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.Delaunay.html#scipy.spatial.Delaunay
@@ -297,6 +321,7 @@ def tin_interpolation(list_pts_3d, j_tin):
     # you need to write your own code for this step
     # but you can of course read the code [dt.interpolate_tin_linear(x, y)]
     
+
     print("File written to", j_tin['output-file'])
 
 
