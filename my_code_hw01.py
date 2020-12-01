@@ -73,7 +73,6 @@ def write_asc(list_pts_3d,int_pts,jparams):
     for i in int_pts:
         fh.write(' '.join(map(repr,i)) + '\n')
     fh.close()
-    print("File written to", jparams["output-file"])
 
 
 def distance_matrix(arr_raster, arr_pts_3d):
@@ -104,8 +103,6 @@ def distance_matrix(arr_raster, arr_pts_3d):
 
 def nn_interpolation(list_pts_3d, j_nn):
     """
-    !!! TO BE COMPLETED !!!
-     
     Function that writes the output raster with nearest neighbour interpolation
      
     Input:
@@ -115,24 +112,43 @@ def nn_interpolation(list_pts_3d, j_nn):
         returns the value of the area
  
     """  
+    ## PREPARATION ##
+    # Extract z sample points from input
     z_pts = [i[2] for i in list_pts_3d]
     z_pts = np.array(z_pts)
+    
+    # Extract cellsize and raster (parameters) from input
     cellsize = j_nn["cellsize"]
-        
     raster_nn, rows, cols, xll, yll = raster(list_pts_3d, j_nn)
-    list_pts_3d_arr = np.array(list_pts_3d)
-    xy_list_arr = list_pts_3d_arr[:,[0,1]] 
-    kd = scipy.spatial.KDTree(xy_list_arr)
 
+    # Transform input list_pts_3d into numpy array
+    list_pts_3d_arr = np.array(list_pts_3d)
+    # x, y extraction
+    xy_list_arr = list_pts_3d_arr[:,[0,1]]
+
+    ## START OF INTERPOLATION ##
+    # Building KD Tree, provide index to xy_list_arr 
+    # for quick lookup of nearest neighbor of any point
+    kd = scipy.spatial.KDTree(xy_list_arr)
+    # Create empty list to store interpolated values
     nn_pts = []
     for xy in raster_nn:
+        # For every cell in raster (x, y) query the KD Tree
+        # to get according index from kd to xy from raster_nn
         _, i = kd.query(xy, k=1)
+        # Now for this according index, take the z point (value) 
+        # from list z_pts, and append to list nn_pts
         nn_pts.append(z_pts[i])
 
+    # Tranform nn_pts list into array, 
+    # reshape to raster according to bbox
+    # and transpose so orientation of image is correct
     nn_pts=np.array(nn_pts)
     nn_pts=nn_pts.reshape(int(rows), int(cols))
     nn_pts = np.transpose(nn_pts)
 
+    ## FINAL STEP ##
+    # Write result to .asc file
     write_asc(list_pts_3d, nn_pts,j_nn)
     print("File written to", j_nn['output-file'])
 
