@@ -13,9 +13,6 @@ import scipy.spatial
 import startin 
 #-----
 
-#-- tmp import by us, will be removed before handing in the assignment
-import time
-
 
 def bbox(list_pts_3d):
     '''
@@ -339,11 +336,14 @@ def kriging_interpolation(list_pts_3d, j_kriging):
     # Calculate the euclidian distance for all combinations of sample points and raster cell centres.
     arr_dist = distance_matrix(arr_raster, arr_pts_3d)
 
-    #  Start with IDW interpolation and store output in zi
+    #  Start with Kriging interpolation and store output in zi
     num_rp, num_sp = arr_dist.shape
     zi = np.empty(num_rp)
 
-    print('Starting Kriging')
+    # To make visualisation a bit easier in QGIS, define (a bit arbitrary ) clipping values for numerical instabilities
+    clip_min = np.min( arr_pts_3d[:,2] ) - np.std( arr_pts_3d[:,2] )
+    clip_max = np.max( arr_pts_3d[:,2] ) + np.std( arr_pts_3d[:,2] )
+
 
     ## START OF INTERPOLATION ##
     for rp in range(num_rp):
@@ -370,23 +370,32 @@ def kriging_interpolation(list_pts_3d, j_kriging):
             A[-1,-1] = 0
             for i in range(num_in_circle):
                 for j in range(num_in_circle):
-                    #habs = math.sqrt( (arr_pts_3d[i,0] - arr_pts_3d[j,0])**2 + (arr_pts_3d[i,1] - arr_pts_3d[j,1])**2 )
                     habs = habs2[i,j]
-                    A[i,j] = vsill * (1 - np.exp( - (3 * habs)**2 / vrange**2 )) + 0
+                    A[i,j] = vsill * (1 - np.exp( - (3 * habs)**2 / vrange**2 )) + vnugget
                     #A[i,j] = 1/2 * ( values[i] - values[j] )**2
 
             if np.linalg.det(A) == 0:
-                # We will get a singular matrix, i.e. because all values are the same.
+                # We will get a singular matrix
                 # In that case, just take the first one around us.
                 zi[rp] = values[0]
             else:
                 # Apply variogram to d
-                d = vsill * (1 - np.exp( - (3 * dists)**2 / vrange**2 )) + 0
+                d = vsill * (1 - np.exp( - (3 * dists)**2 / vrange**2 )) + vnugget
                 d = np.append(d, 1)
 
                 weights = np.linalg.solve(A,d)
                 
-                zi[rp] = np.dot(values.T, weights[0:-1])
+                # Calculate interpolated value
+                ijval = np.dot(values.T, weights[0:-1])
+
+                # Clip if the result is obviously unrealistic because of numeric instability
+                if ijval < clip_min:
+                    zi[rp] = clip_min
+                elif ijval > clip_max:
+                    zi[rp] = clip_max
+                else:
+                    # Store calculated value
+                    zi[rp] = ijval
 
         else:
             # The current raster point does not have any sample points in sight
