@@ -64,7 +64,7 @@ variogram_points = np.array(variogram_points_list)
 experimental_variogram_bins = []
 experimental_variogram_count = []
 experimental_variogram_sum = []
-bins = 4
+bins = 64
 half_distance = max_distance/2.0
 for i in range(bins):
 	experimental_variogram_bins.append(half_distance*(i+0.5)/bins)
@@ -90,15 +90,15 @@ theoretical_variogram_spherical = []
 exponential_style = []
 gaussian_style = []
 spherical_style = []
-sill_exponential = 100
-sill_gaussian = 100
-sill_spherical = 100
-range_exponential = 100
-range_gaussian = 100
-range_spherical = 100
-nugget_exponential = 50
-nugget_gaussian = 50
-nugget_spherical = 50
+sill_exponential = 1350
+sill_gaussian = 1310
+sill_spherical = 1350
+range_exponential = 250
+range_gaussian = 280
+range_spherical = 280
+nugget_exponential = 10
+nugget_gaussian = 1
+nugget_spherical = 10
 for bin in experimental_variogram_bins:
 	theoretical_variogram_exponential.append(nugget_exponential+sill_exponential*(1.0 - math.exp(-3.0*bin/range_exponential)))
 	theoretical_variogram_gaussian.append(nugget_gaussian+sill_gaussian*(1.0 - math.exp(-9.0*bin*bin/(range_gaussian*range_gaussian))))

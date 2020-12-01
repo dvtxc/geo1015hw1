@@ -75,6 +75,33 @@ def write_asc(list_pts_3d,int_pts,jparams):
     fh.close()
     print("File written to", jparams["output-file"])
 
+
+def distance_matrix(arr_raster, arr_pts_3d):
+    '''
+    DISTANCE_MATRIX
+
+    The advantage of this function is, that the distance between all points is only calculated once.
+
+    Input: 
+        arr_raster: an m x 2 np.array() containing m xy-coordinates, i.e. of the raster cell centres
+        arr_pts_3d: an n x 2 np.array() containing n xy-coordinates, i.e. of the sample points
+    Output:
+        an m x n np.array() containing euclidian distance between all combinations of raster and sample points
+    '''
+
+    # Subtract the coordinates between the points of arr_pts_3d and arr_raster.
+    # Since we want to calculate the distance of all points, perform an np.outer()
+    # operation, i.e. between all points of arrays of different sizes.
+    dx = np.subtract.outer(arr_raster[:,0], arr_pts_3d[:,0])
+    dy = np.subtract.outer(arr_raster[:,1], arr_pts_3d[:,1])
+
+    # Calculate the euclidian distance between all points as 
+    # arr_dist = [[dist_rp1_sp1, dist_rp1_sp2, dist_rp1_sp3, ...],
+    #             [dist_rp2_sp1, dist_rp2_sp2, dist_rp2_sp3, ...],
+    #             ...]
+    return np.hypot(dx, dy)
+
+
 def nn_interpolation(list_pts_3d, j_nn):
     """
     !!! TO BE COMPLETED !!!
@@ -112,9 +139,6 @@ def nn_interpolation(list_pts_3d, j_nn):
 
 def idw_interpolation(list_pts_3d, j_idw):
     """
-    !!! TO BE COMPLETED !!!
-    !!! DO NOT CHANGE INPUT ARGUMENTS !!!
-     
     Function that writes the output raster with IDW
      
     Input:
@@ -125,6 +149,8 @@ def idw_interpolation(list_pts_3d, j_idw):
  
     """  
 
+    ## PREPARATION ##
+    # Initialise some constants
     nodata_value = -9999
     idw_power = -int(j_idw["power"])
     radius = j_idw["radius"]
@@ -133,25 +159,17 @@ def idw_interpolation(list_pts_3d, j_idw):
     arr_pts_3d = np.array(list_pts_3d)
 
     # Retrieve bounding box for this dataset
-    min_x, min_y, max_x, max_y = bbox( arr_pts_3d )
+    min_x, min_y, max_x, max_y = bbox_np( arr_pts_3d )
 
     # Retrieve raster center points
     # TO-DO, use np-array
-    list_raster = raster( list_pts_3d, j_idw )
+    list_raster, rows, colls, xll, yll = raster( list_pts_3d, j_idw )
     arr_raster = np.array( list_raster )
 
-    # Subtract the coordinates between the points of arr_pts_3d and arr_raster.
-    # Since we want to calculate the distance of all points, perform an np.outer()
-    # operation, i.e. between all points of arrays of different sizes.
-    dx = np.subtract.outer(arr_raster[:,0], arr_pts_3d[:,0])
-    dy = np.subtract.outer(arr_raster[:,1], arr_pts_3d[:,1])
+    # Calculate the euclidian distance between all combinations of sample points and raster centres
+    arr_dist = distance_matrix(arr_raster, arr_pts_3d)
 
-    # Calculate the euclidian distance between all points as 
-    # arr_dist = [[dist_rp1_sp1, dist_rp1_sp2, dist_rp1_sp3, ...],
-    #             [dist_rp2_sp1, dist_rp2_sp2, dist_rp2_sp3, ...],
-    #             ...]
-    arr_dist = np.hypot(dx, dy)
-
+    ## START OF INTERPOLATION ##
     #  Start with IDW interpolation and store output in zi
     num_rp, num_sp = arr_dist.shape
     zi = np.empty(num_rp)
@@ -159,7 +177,7 @@ def idw_interpolation(list_pts_3d, j_idw):
     for i in range(num_rp):
         # For every raster point:
 
-        # Calculate distance from this raster point to sample points
+        # Get distances from this raster point to sample points
         distances = arr_dist[i, :]
 
         # What sample points are within the circle
@@ -179,6 +197,7 @@ def idw_interpolation(list_pts_3d, j_idw):
             print(zi[i])
             #print('\n')
         else:
+            # The current raster point does not have any sample points in sight
             zi[i] = nodata_value
 
 
@@ -234,6 +253,83 @@ def kriging_interpolation(list_pts_3d, j_kriging):
         returns the value of the area
  
     """  
+
+    ## PREPARATION ##
+    # Set up some constants
+    nodata_value = -9999
+    radius = j_kriging["radius"]
+    cellsize = j_kriging["cellsize"]
     
+    # Variogram constants
+    vsill = 1310
+    vrange = 280
+    vnugget = 1
+
+    # Convert to NumPy array
+    arr_pts_3d = np.array(list_pts_3d)
+
+    # Retrieve bounding box for this dataset
+    min_x, min_y, max_x, max_y = bbox_np( arr_pts_3d )
+
+    # Retrieve raster center points
+    # TO-DO, use np-array
+    list_raster, rows, colls, xll, yll = raster( list_pts_3d, j_kriging )
+    arr_raster = np.array( list_raster )
+
+    # Calculate the euclidian distance for all combinations of sample points and raster cell centres.
+    arr_dist = distance_matrix(arr_raster, arr_pts_3d)
+
+    #  Start with IDW interpolation and store output in zi
+    num_rp, num_sp = arr_dist.shape
+    zi = np.empty(num_rp)
+
+    ## START OF INTERPOLATION ##
+    for rp in range(num_rp):
+        # For every raster point:
+
+        # Get distances from this raster point to other sample points
+        distances = arr_dist[rp, :]
+
+        # What sample points are within the circle?
+        sp_in_circle = np.where(distances < radius)[0]
+        num_in_circle = sp_in_circle.size
+        #print(arr_raster[rp,:])
+        #print(sp_in_circle)
+        
+        if num_in_circle > 0:
+            # Get values from sample points within circle
+            values = arr_pts_3d[sp_in_circle, 2]
+            dists = distances[sp_in_circle]
+            #print(values)
+
+            # Calculate Lagrange multiplier matrix
+            A = np.ones((num_in_circle + 1, num_in_circle + 1))
+            A[-1,-1] = 0
+            for i in range(num_in_circle):
+                for j in range(num_in_circle):
+                    habs = math.sqrt( (arr_pts_3d[i,0] - arr_pts_3d[j,0])**2 + (arr_pts_3d[i,1] - arr_pts_3d[j,1])**2 )
+                    A[i,j] = vsill * (1 - np.exp( - (3 * habs)**2 / vrange**2 )) + 0
+                    #A[i,j] = 1/2 * ( values[i] - values[j] )**2
+
+            if np.linalg.det(A) == 0:
+                # We will get a singular matrix, i.e. because all values are the same.
+                # In that case, just take the first one around us.
+                zi[rp] = values[0]
+            else:
+                # Apply variogram to d
+                d = vsill * (1 - np.exp( - (3 * dists)**2 / vrange**2 )) + 0
+                d = np.append(d, 1)
+
+                weights = np.linalg.solve(A,d)
+                
+                zi[rp] = np.dot(values.T, weights[0:-1])
+            print(zi[rp])
+            #print('\n')
+        else:
+            # The current raster point does not have any sample points in sight
+            zi[rp] = nodata_value
+
+
+
     
     print("File written to", j_kriging['output-file'])
