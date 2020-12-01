@@ -242,7 +242,50 @@ def tin_interpolation(list_pts_3d, j_tin):
     Output:
         returns the value of the area
  
-    """  
+    """ 
+    # Transform input list_pts_3d into numpy array
+    list_pts_3d_arr = np.array(list_pts_3d)
+    # x, y extraction
+    xy_list_arr = list_pts_3d_arr[:,[0,1]] 
+    # Raster
+    raster_tin, rows, cols, xll, yll = raster(list_pts_3d, j_tin)
+    #print(raster_tin)
+    # No data
+    no_data = -9999
+    
+    
+    dt = scipy.spatial.Delaunay(xy_list_arr)
+    #print(dt.simplices)
+    #print(dt.vertices)
+    tin_pts= []
+    vertices = []
+    for xy in raster_tin:
+        sim = dt.find_simplex(xy)
+        if xy is not sim:
+            tin_pts.append(no_data)
+        elif sim == -1:
+            tin_pts.append(no_data)
+        verts = list_pts_3d_arr[dt.simplices[sim]]
+        vertices.append(verts)
+    print(vertices[0])
+    print(vertices[0][0])
+    print(vertices[0][0][2])
+
+    
+    
+    '''
+    vertices = []
+    for xy in raster_tin:
+        if dt.find_simplex(xy) == -1:
+            tin_pts.append(no_data)
+        elif not dt.find_simplex:
+            continue
+        verts = list_pts_3d_arr[dt.simplices[dt.find_simplex(xy)]]
+        vertices.append(verts) 
+    print('tin_pts', len(tin_pts))
+    print('vertices', len(vertices))
+    '''    
+
     #-- example to construct the DT with scipy
     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.Delaunay.html#scipy.spatial.Delaunay
     # dt = scipy.spatial.Delaunay([])
