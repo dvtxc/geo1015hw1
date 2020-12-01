@@ -180,6 +180,10 @@ def idw_interpolation(list_pts_3d, j_idw):
     list_raster, rows, cols, xll, yll = raster( list_pts_3d, j_idw )
     arr_raster = np.array( list_raster )
 
+    # Determine what raster points are outside the convex hull
+    hull = scipy.spatial.Delaunay( arr_pts_3d[:,0:2] )
+    inhull = hull.find_simplex( arr_raster ) >= 0
+
     # Calculate the euclidian distance between all combinations of sample points and raster centres
     arr_dist = distance_matrix(arr_raster, arr_pts_3d)
 
@@ -191,27 +195,36 @@ def idw_interpolation(list_pts_3d, j_idw):
     for i in range(num_rp):
         # For every raster point:
 
-        # Get distances from this raster point to sample points
-        distances = arr_dist[i, :]
+        # Check whether the raster point lies within the convex hull of the sample points
+        if inhull[i]:
 
-        # What sample points are within the circle
-        sp_in_circle = np.where(distances < radius)[0]
-        #print(arr_raster[i,:])
-        #print(sp_in_circle)
-        
-        if sp_in_circle.size != 0:
-            # Get values from sample points within circle
-            values = arr_pts_3d[sp_in_circle, 2]
-            #print(values)
+            # Get distances from this raster point to sample points
+            distances = arr_dist[i, :]
 
-            weights = distances[sp_in_circle] ** idw_power
-            weights /= weights.sum(axis=0)
+            # What sample points are within the circle
+            sp_in_circle = np.where(distances < radius)[0]
+            #print(arr_raster[i,:])
+            #print(sp_in_circle)
             
-            zi[i] = np.dot(values.T, weights)
+            if sp_in_circle.size != 0:
+                # Get values from sample points within circle
+                values = arr_pts_3d[sp_in_circle, 2]
+                #print(values)
 
+                weights = distances[sp_in_circle] ** idw_power
+                weights /= weights.sum(axis=0)
+                
+                zi[i] = np.dot(values.T, weights)
+
+            else:
+                # The current raster point does not have any sample points in sight
+                zi[i] = nodata_value
+        
         else:
-            # The current raster point does not have any sample points in sight
+            # The current raster point does NOT lie within the convex hull
+
             zi[i] = nodata_value
+
 
         print('Performing IDW: {0:6.2f}%'.format(i/num_rp*100), end='\r')
 
@@ -333,6 +346,10 @@ def kriging_interpolation(list_pts_3d, j_kriging):
     list_raster, rows, cols, xll, yll = raster( list_pts_3d, j_kriging )
     arr_raster = np.array( list_raster )
 
+    # Determine what raster points are outside the convex hull
+    hull = scipy.spatial.Delaunay( arr_pts_3d[:,0:2] )
+    inhull = hull.find_simplex( arr_raster ) >= 0
+
     # Calculate the euclidian distance for all combinations of sample points and raster cell centres.
     arr_dist = distance_matrix(arr_raster, arr_pts_3d)
 
@@ -349,57 +366,66 @@ def kriging_interpolation(list_pts_3d, j_kriging):
     for rp in range(num_rp):
         # For every raster point:
 
-        # Get distances from this raster point to other sample points
-        distances = arr_dist[rp, :]
+        # Check if raster point lies within the convex hull of the sample points
+        if inhull[rp]:
 
-        # What sample points are within the circle?
-        sp_in_circle = np.where(distances < radius)[0]
-        num_in_circle = sp_in_circle.size
-        #print(arr_raster[rp,:])
-        #print(sp_in_circle)
-        
-        if num_in_circle > 0:
-            # Get values from sample points within circle
-            values = arr_pts_3d[sp_in_circle, 2]
-            dists = distances[sp_in_circle]
-            #print(values)
+            # Get distances from this raster point to other sample points
+            distances = arr_dist[rp, :]
 
-            # Calculate Lagrange multiplier matrix
-            habs2 = distance_matrix(arr_pts_3d[sp_in_circle,:], arr_pts_3d[sp_in_circle,:])
-            A = np.ones((num_in_circle + 1, num_in_circle + 1))
-            A[-1,-1] = 0
-            for i in range(num_in_circle):
-                for j in range(num_in_circle):
-                    habs = habs2[i,j]
-                    A[i,j] = vsill * (1 - np.exp( - (3 * habs)**2 / vrange**2 )) + vnugget
-                    #A[i,j] = 1/2 * ( values[i] - values[j] )**2
+            # What sample points are within the circle?
+            sp_in_circle = np.where(distances < radius)[0]
+            num_in_circle = sp_in_circle.size
+            #print(arr_raster[rp,:])
+            #print(sp_in_circle)
+            
+            if num_in_circle > 0:
+                # Get values from sample points within circle
+                values = arr_pts_3d[sp_in_circle, 2]
+                dists = distances[sp_in_circle]
+                #print(values)
 
-            if np.linalg.det(A) == 0:
-                # We will get a singular matrix
-                # In that case, just take the first one around us.
-                zi[rp] = values[0]
-            else:
-                # Apply variogram to d
-                d = vsill * (1 - np.exp( - (3 * dists)**2 / vrange**2 )) + vnugget
-                d = np.append(d, 1)
+                # Calculate Lagrange multiplier matrix
+                habs2 = distance_matrix(arr_pts_3d[sp_in_circle,:], arr_pts_3d[sp_in_circle,:])
+                A = np.ones((num_in_circle + 1, num_in_circle + 1))
+                A[-1,-1] = 0
+                for i in range(num_in_circle):
+                    for j in range(num_in_circle):
+                        habs = habs2[i,j]
+                        A[i,j] = vsill * (1 - np.exp( - (3 * habs)**2 / vrange**2 )) + vnugget
+                        #A[i,j] = 1/2 * ( values[i] - values[j] )**2
 
-                weights = np.linalg.solve(A,d)
-                
-                # Calculate interpolated value
-                ijval = np.dot(values.T, weights[0:-1])
-
-                # Clip if the result is obviously unrealistic because of numeric instability
-                if ijval < clip_min:
-                    zi[rp] = clip_min
-                elif ijval > clip_max:
-                    zi[rp] = clip_max
+                if np.linalg.det(A) == 0:
+                    # We will get a singular matrix
+                    # In that case, just take the first one around us.
+                    zi[rp] = values[0]
                 else:
-                    # Store calculated value
-                    zi[rp] = ijval
+                    # Apply variogram to d
+                    d = vsill * (1 - np.exp( - (3 * dists)**2 / vrange**2 )) + vnugget
+                    d = np.append(d, 1)
+
+                    weights = np.linalg.solve(A,d)
+                    
+                    # Calculate interpolated value
+                    ijval = np.dot(values.T, weights[0:-1])
+
+                    # Clip if the result is obviously unrealistic because of numeric instability
+                    if ijval < clip_min:
+                        zi[rp] = clip_min
+                    elif ijval > clip_max:
+                        zi[rp] = clip_max
+                    else:
+                        # Store calculated value
+                        zi[rp] = ijval
+
+            else:
+                # The current raster point does not have any sample points in sight
+                zi[rp] = nodata_value
 
         else:
-            # The current raster point does not have any sample points in sight
+            # Current raster point does not lie within the convex hull
+
             zi[rp] = nodata_value
+            
 
         print('Performing Kriging: {0:6.2f}%'.format(rp/num_rp*100), end='\r')
 
