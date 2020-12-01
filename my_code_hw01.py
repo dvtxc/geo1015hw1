@@ -207,6 +207,7 @@ def idw_interpolation(list_pts_3d, j_idw):
     # print("radius:", j_idw['radius'])
 
     zi = zi.reshape(int(rows), int(cols))
+    zi = np.transpose(zi)
 
     write_asc(list_pts_3d, zi, j_idw)
     
